@@ -1,0 +1,5 @@
+# Mantém LF no repositório (scripts .sh/.py quebram com CRLF no Git Bash)
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.zip binary

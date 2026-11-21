@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Canvas de design</title>
+<link rel="icon" href="data:,">
+<style>
+  :root{
+    --bg:#16171b; --dot:#2a2c33; --panel:#1f2026; --panel-2:#272930; --line:#34363f;
+    --text:#e9e9ee; --muted:#9a9cab; --accent:#7c8cff; --ok:#3ecf8e; --warn:#f5b84b; --bad:#ff6b6b;
+    --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:13px/1.4 var(--font);overflow:hidden}
+  button{font:inherit;color:inherit;background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:5px 9px;cursor:pointer}
+  button:hover{border-color:#4a4d59}
+  button.on{background:var(--accent);border-color:var(--accent);color:#0b0c10}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  /* top bar */
+  #bar{position:fixed;inset:0 0 auto 0;height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;
+       background:var(--panel);border-bottom:1px solid var(--line);z-index:20}
+  #bar .title{font-weight:650;margin-right:6px;white-space:nowrap}
+  #bar .ver{color:var(--muted);margin-right:8px;white-space:nowrap}
+  .grp{display:flex;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:2px}
+  .grp button{border:0;background:transparent;padding:4px 8px}
+  .grp button.on{background:var(--panel-2);color:var(--text)}
+  .spacer{flex:1}
+  #conn{display:flex;align-items:center;gap:6px;color:var(--muted);white-space:nowrap}
+  #conn i{width:8px;height:8px;border-radius:50%;background:var(--warn);display:inline-block}
+  #conn.live i{background:var(--ok)}
+  /* board */
+  #viewport{position:fixed;inset:48px 0 0 0;overflow:hidden;cursor:grab;
+    background-image:radial-gradient(var(--dot) 1px,transparent 1px);background-size:22px 22px}
+  #viewport.panning{cursor:grabbing}
+  #viewport.mode-comment .frame-body{cursor:crosshair}
+  #world{position:absolute;left:0;top:0;transform-origin:0 0}
+  #arrows{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+  .group-label{position:absolute;font-size:22px;font-weight:700;color:var(--muted);letter-spacing:.02em}
+  .frame{position:absolute;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 40px #0008}
+  .frame.sel{outline:2px solid var(--accent);outline-offset:3px}
+  .frame-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:9px 12px;border-bottom:1px solid var(--line);cursor:default}
+  .frame-head h3{margin:0;font-size:15px;font-weight:650}
+  .frame-head .id{color:var(--muted);font-size:12px}
+  .chip{font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+  .chip.aprovado{color:var(--ok);border-color:#3ecf8e66}
+  .chip.mudar{color:var(--warn);border-color:#f5b84b66}
+  .chip.revisao{color:var(--accent);border-color:#7c8cff66}
+  .chip.novo{color:#fff;background:var(--accent);border-color:var(--accent)}
+  .frame-head .acts{margin-left:auto;display:flex;gap:6px}
+  .frame-head .acts button{padding:3px 8px;font-size:12px}
+  .frame.compact .frame-head .id{display:none}
+  .frame.compact .frame-head h3{font-size:13px;flex-basis:100%}
+  .frame-body{position:relative;overflow:hidden;background:#fff;border-radius:0 0 12px 12px}
+  .frame-body iframe{border:0;display:block;transform-origin:0 0;background:#fff}
+  .frame-body .shield{position:absolute;inset:0}
+  .frame-notes{padding:8px 12px;color:var(--muted);border-top:1px solid var(--line);font-size:12px;max-width:100%}
+  .pin{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50% 50% 50% 4px;background:var(--warn);
+       color:#111;font-weight:700;font-size:12px;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 8px #0007;z-index:3}
+  .pin.done{background:var(--ok)}
+  /* side panel */
+  #side{position:fixed;top:48px;right:0;bottom:0;width:340px;background:var(--panel);border-left:1px solid var(--line);
+        z-index:15;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .18s}
+  #side.open{transform:none}
+  #side nav{display:flex;gap:4px;padding:8px;border-bottom:1px solid var(--line)}
+  #side nav button{flex:1}
+  #side .content{overflow:auto;padding:12px;flex:1}
+  #side h4{margin:14px 0 6px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  .sw{display:flex;align-items:center;gap:8px;margin:4px 0}
+  .sw i{width:28px;height:28px;border-radius:7px;border:1px solid var(--line)}
+  .sw code{color:var(--muted);margin-left:auto}
+  .cmt{background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:9px;margin-bottom:8px}
+  .cmt .meta{color:var(--muted);font-size:11px;display:flex;gap:6px;margin-bottom:4px}
+  .cmt .meta a{color:var(--accent);cursor:pointer}
+  .cmt.done{opacity:.55}
+  .cmt .row{display:flex;gap:6px;margin-top:6px}
+  .cmt .row button{font-size:11px;padding:2px 7px}
+  textarea{width:100%;min-height:70px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:7px;font:inherit;resize:vertical}
+  .hist{border-left:2px solid var(--line);padding:2px 0 8px 10px;margin-left:4px}
+  .hist b{display:block}
+  .empty{position:fixed;inset:48px 0 0 0;display:grid;place-items:center;text-align:center;color:var(--muted);pointer-events:none;z-index:1}
+  .empty[hidden]{display:none}
+  .empty b{display:block;color:var(--text);font-size:18px;margin-bottom:6px}
+  /* popover for new comment */
+  #pop{position:fixed;z-index:30;width:280px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;box-shadow:0 12px 40px #000a;display:none}
+  #pop .row{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}
+  #toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--panel-2);border:1px solid var(--line);
+         padding:8px 14px;border-radius:9px;z-index:40;opacity:0;transition:opacity .2s;pointer-events:none}
+  #toast.show{opacity:1}
+  #help{color:var(--muted);font-size:12px;white-space:nowrap}
+  @media (max-width:900px){#help,#bar .ver{display:none}#side{width:100%}}
+</style>
+</head>
+<body>
+<div id="bar">
+  <span class="title" id="pname">Canvas</span><span class="ver" id="pver"></span>
+  <div class="grp" id="modes" title="Modo">
+    <button data-mode="nav" class="on" title="Arrastar e dar zoom (V)">✋ Navegar</button>
+    <button data-mode="comment" title="Clique numa tela para comentar (C)">💬 Comentar</button>
+    <button data-mode="edit" title="Editar textos direto na tela (E) — precisa do servidor">✏️ Editar</button>
+  </div>
+  <div class="grp" id="vps" title="Tamanho de tela">
+    <button data-vp="desktop" class="on">🖥 Desktop</button>
+    <button data-vp="tablet">Tablet</button>
+    <button data-vp="mobile">📱 Celular</button>
+  </div>
+  <button id="fit" title="Enquadrar tudo (F)">⤢ Enquadrar</button>
+  <span class="spacer"></span>
+  <span id="help">arraste para mover · roda/pinça para zoom</span>
+  <span id="conn" title=""><i></i><span>offline</span></span>
+  <button id="copy" title="Copia comentários e decisões para colar no chat">📋 Copiar feedback</button>
+  <button id="sideBtn">☰ Painel</button>
+</div>
+
+<div id="viewport"><div id="world"><svg id="arrows"></svg></div></div>
+<div class="empty" id="empty" hidden><div><b>Nenhuma tela ainda</b>O agente designer coloca as telas aqui assim que o /design rodar.</div></div>
+
+<aside id="side">
+  <nav><button data-tab="cmts" class="on">Comentários</button><button data-tab="tokens">Estilo</button><button data-tab="hist">Versões</button></nav>
+  <div class="content" id="sideContent"></div>
+</aside>
+
+<div id="pop"><textarea id="popText" placeholder="O que mudar aqui?"></textarea>
+  <div class="row"><button id="popCancel">Cancelar</button><button id="popSave" class="on">Comentar</button></div></div>
+<div id="toast"></div>
+
+<script>
+/* ---------------------------------------------------------------- estado */
+const VP = { desktop:{w:1280,h:800,scale:.5}, tablet:{w:768,h:1024,scale:.42}, mobile:{w:390,h:844,scale:.55} };
+const S = {
+  manifest:{screens:[]}, mode:"nav", vp:"desktop", live:false, version:"",
+  cam:{x:60,y:40,z:1}, fb:{comments:[], status:{}}, sel:null, tab:"cmts", pending:null,
+};
+const $ = s => document.querySelector(s);
+const world = $("#world"), viewport = $("#viewport"), arrows = $("#arrows");
+const LS_KEY = "ai-kit-canvas-feedback:" + location.pathname;
+
+function toast(t){ const el=$("#toast"); el.textContent=t; el.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove("show"),2200); }
+function esc(s){ return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function now(){ return new Date().toISOString().slice(0,16).replace("T"," "); }
+
+/* ---------------------------------------------------------------- dados */
+function loadManifest(){
+  if(window.CANVAS_BUNDLED) return Promise.resolve(window.CANVAS);
+  return new Promise(res=>{
+    const old=document.getElementById("mf"); if(old) old.remove();
+    const s=document.createElement("script"); s.id="mf"; s.src="manifest.js?t="+Date.now();
+    s.onload=()=>res(window.CANVAS||{screens:[]}); s.onerror=()=>res({screens:[]});
+    document.head.appendChild(s);
+  });
+}
+async function loadFeedback(){
+  if(S.live){ try{ const r=await fetch("/__feedback",{cache:"no-store"}); if(r.ok){ S.fb=Object.assign({comments:[],status:{}},await r.json()); return; } }catch(e){} }
+  try{ S.fb=Object.assign({comments:[],status:{}},JSON.parse(localStorage.getItem(LS_KEY)||"{}")); }catch(e){}
+}
+async function saveFeedback(){
+  try{ localStorage.setItem(LS_KEY,JSON.stringify(S.fb)); }catch(e){}
+  if(S.live){ try{ await fetch("/__feedback",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(S.fb)}); }catch(e){} }
+}
+async function probeServer(){
+  try{ const r=await fetch("/__version",{cache:"no-store"}); if(r.ok){ const j=await r.json(); S.version=j.version; S.fbv=j.feedback; return true; } }catch(e){}
+  return false;
+}
+
+/* ---------------------------------------------------------------- layout */
+function layout(){
+  const scr=S.manifest.screens||[], vp=VP[S.vp];
+  const fw=vp.w*vp.scale, fh=vp.h*vp.scale, gapX=90, gapY=150;
+  const groups=[]; scr.forEach(s=>{ const g=s.group||"Telas"; if(!groups.includes(g)) groups.push(g); });
+  const pos={}; let y=0;
+  groups.forEach(g=>{
+    const items=scr.filter(s=>(s.group||"Telas")===g);
+    items.forEach((s,i)=>{ pos[s.id]={x:i*(fw+gapX), y:y+50, w:fw, h:fh, group:g}; });
+    pos["__g_"+g]={x:0,y:y,label:g};
+    y+=fh+gapY+(items.some(s=>s.notes)?40:0);
+  });
+  return pos;
+}
+
+/* ---------------------------------------------------------------- render */
+function render(){
+  const scr=S.manifest.screens||[];
+  $("#pname").textContent=S.manifest.project||"Canvas";
+  $("#pver").textContent=(S.manifest.version?"v"+S.manifest.version:"")+(S.manifest.updated?" · "+S.manifest.updated:"");
+  $("#empty").hidden=scr.length>0;
+  document.title=(S.manifest.project||"Canvas")+" — canvas";
+  [...world.querySelectorAll(".frame,.group-label")].forEach(n=>n.remove());
+  const pos=layout(), vp=VP[S.vp];
+  Object.entries(pos).filter(([k])=>k.startsWith("__g_")).forEach(([k,p])=>{
+    const d=document.createElement("div"); d.className="group-label"; d.style.left=p.x+"px"; d.style.top=p.y+"px"; d.textContent=p.label; world.appendChild(d);
+  });
+  scr.forEach(s=>{
+    const p=pos[s.id]; const st=S.fb.status[s.id]||s.status||"revisao";
+    const label={aprovado:"aprovado",mudar:"pedir mudança",revisao:"em revisão",novo:"novo"}[st]||st;
+    const compact=p.w<330;
+    const f=document.createElement("div"); f.className="frame"+(compact?" compact":"")+(S.sel===s.id?" sel":""); f.dataset.id=s.id;
+    f.style.left=p.x+"px"; f.style.top=p.y+"px"; f.style.width=p.w+"px";
+    f.innerHTML=`<div class="frame-head"><h3>${esc(s.title||s.id)}</h3><span class="id">${esc(s.id)}</span>
+      <span class="chip ${esc(st)}">${esc(label)}</span>
+      <div class="acts"><button data-act="ok" title="Aprovar esta tela">✓${compact?"":" Aprovar"}</button><button data-act="chg" title="Pedir mudança">✎${compact?"":" Mudar"}</button><button data-act="open" title="Abrir sozinha">↗</button></div></div>
+      <div class="frame-body" style="height:${p.h}px"><iframe loading="lazy" title="${esc(s.title||s.id)}" ${s.html!=null?`srcdoc="${esc(s.html)}"`:`src="${esc(s.file)}${S.live?"?t="+S.version:""}"`} style="width:${vp.w}px;height:${vp.h}px;transform:scale(${vp.scale})"></iframe><div class="shield"></div></div>
+      ${s.notes?`<div class="frame-notes">${esc(s.notes)}</div>`:""}`;
+    world.appendChild(f);
+    const body=f.querySelector(".frame-body"), shield=f.querySelector(".shield"), ifr=f.querySelector("iframe");
+    shield.style.display = S.mode==="edit" ? "none" : "block";
+    if(S.mode==="edit") ifr.addEventListener("load",()=>enableEdit(ifr));
+    S.fb.comments.filter(c=>c.screen===s.id && c.vp===S.vp).forEach((c,i)=>{
+      const pin=document.createElement("div"); pin.className="pin"+(c.done?" done":""); pin.textContent=S.fb.comments.indexOf(c)+1;
+      pin.style.left=c.x*100+"%"; pin.style.top=c.y*100+"%"; pin.title=c.text;
+      pin.onclick=e=>{ e.stopPropagation(); openSide("cmts"); highlight(c.id); };
+      body.appendChild(pin);
+    });
+    shield.addEventListener("click",e=>{
+      if(S.mode!=="comment") return;
+      const r=body.getBoundingClientRect();
+      S.pending={screen:s.id,x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height};
+      const pop=$("#pop"); pop.style.display="block";
+      pop.style.left=Math.min(e.clientX+10,innerWidth-300)+"px"; pop.style.top=Math.min(e.clientY+10,innerHeight-160)+"px";
+      $("#popText").value=""; $("#popText").focus();
+    });
+    f.querySelector(".frame-head").addEventListener("click",()=>{ S.sel=s.id; document.querySelectorAll(".frame").forEach(n=>n.classList.toggle("sel",n.dataset.id===s.id)); });
+    f.querySelectorAll("[data-act]").forEach(b=>b.onclick=async e=>{
+      e.stopPropagation(); const a=b.dataset.act;
+      if(a==="open"){ if(s.html!=null){ const w=window.open("","_blank"); if(w){ w.document.write(s.html); w.document.close(); } return; } return window.open(s.file,"_blank"); }
+      S.fb.status[s.id]= a==="ok" ? "aprovado" : "mudar";
+      if(a==="chg"){ setMode("comment"); toast("Clique na tela para dizer o que mudar"); }
+      await saveFeedback(); render(); renderSide();
+    });
+  });
+  drawArrows(pos);
+  applyCam();
+}
+function drawArrows(pos){
+  let svg='<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#7c8cff"/></marker></defs>';
+  (S.manifest.screens||[]).forEach(s=>(s.links||[]).forEach(t=>{
+    const a=pos[s.id], b=pos[t]; if(!a||!b) return;
+    let d;
+    if(Math.abs(a.y-b.y)<5 && b.x>a.x){            // mesma linha, para a direita
+      const ax=a.x+a.w, ay=a.y+a.h/2+40, bx=b.x, by=b.y+b.h/2+40;
+      d=`M${ax},${ay} C${ax+50},${ay} ${bx-50},${by} ${bx-6},${by}`;
+    } else if(b.y>a.y+5){                          // grupo abaixo: de baixo para cima
+      const ax=a.x+a.w/2, ay=a.y+a.h+52, bx=b.x+b.w/2, by=b.y-6;
+      d=`M${ax},${ay} C${ax},${ay+70} ${bx},${by-70} ${bx},${by}`;
+    } else {                                       // voltando (esquerda ou acima): arco por cima
+      const ax=a.x+a.w/2, ay=a.y-6, bx=b.x+b.w/2, by=b.y-6, top=Math.min(ay,by)-90;
+      d=`M${ax},${ay} C${ax},${top} ${bx},${top} ${bx},${by}`;
+    }
+    svg+=`<path d="${d}" fill="none" stroke="#7c8cff" stroke-width="2.5" stroke-dasharray="6 6" marker-end="url(#ah)" opacity=".8"/>`;
+  }));
+  arrows.innerHTML=svg;
+}
+
+/* ---------------------------------------------------------------- edição de texto */
+function enableEdit(ifr){
+  let doc; try{ doc=ifr.contentDocument; }catch(e){ doc=null; }
+  if(!doc){ toast("Edição precisa do servidor local (o designer abre ele para você)"); return; }
+  doc.designMode="on";
+  const save=debounce(async()=>{
+    const file=ifr.getAttribute("src").split("?")[0];
+    const html="<!DOCTYPE html>\n"+doc.documentElement.outerHTML;
+    try{ const r=await fetch("/__save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({file,html})});
+         toast(r.ok?"Texto salvo ✓":"Não consegui salvar"); }catch(e){ toast("Sem servidor: edição não salva"); }
+  },900);
+  doc.addEventListener("input",save);
+}
+function debounce(fn,ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
+
+/* ---------------------------------------------------------------- painel lateral */
+function openSide(tab){ S.tab=tab||S.tab; $("#side").classList.add("open"); renderSide(); }
+function highlight(id){ setTimeout(()=>{ const el=document.getElementById("c_"+id); if(el){ el.scrollIntoView({block:"center"}); el.style.outline="2px solid var(--accent)"; setTimeout(()=>el.style.outline="",1200);} },50); }
+function renderSide(){
+  document.querySelectorAll("#side nav button").forEach(b=>b.classList.toggle("on",b.dataset.tab===S.tab));
+  const c=$("#sideContent"), m=S.manifest;
+  if(S.tab==="cmts"){
+    const list=S.fb.comments;
+    const st=Object.entries(S.fb.status);
+    c.innerHTML=(st.length?`<h4>Decisões</h4>`+st.map(([k,v])=>`<div class="sw"><span>${esc(k)}</span><code>${esc(v)}</code></div>`).join(""):"")
+      +`<h4>Comentários (${list.filter(x=>!x.done).length} abertos)</h4>`
+      +(list.length?list.map((x,i)=>`<div class="cmt ${x.done?"done":""}" id="c_${x.id}">
+        <div class="meta"><b>#${i+1}</b><a data-go="${esc(x.screen)}">${esc(x.screen)}</a><span>${esc(x.vp)}</span><span>${esc(x.date)}</span></div>
+        <div>${esc(x.text)}</div>
+        <div class="row"><button data-done="${x.id}">${x.done?"Reabrir":"Resolvido"}</button><button data-del="${x.id}">Apagar</button></div></div>`).join("")
+        :`<p style="color:var(--muted)">Use o modo 💬 Comentar e clique em qualquer ponto de uma tela.</p>`);
+    c.querySelectorAll("[data-go]").forEach(a=>a.onclick=()=>focusScreen(a.dataset.go));
+    c.querySelectorAll("[data-done]").forEach(b=>b.onclick=async()=>{ const x=S.fb.comments.find(y=>y.id===b.dataset.done); x.done=!x.done; await saveFeedback(); render(); renderSide(); });
+    c.querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{ S.fb.comments=S.fb.comments.filter(y=>y.id!==b.dataset.del); await saveFeedback(); render(); renderSide(); });
+  } else if(S.tab==="tokens"){
+    const t=m.tokens||{};
+    c.innerHTML=(m.direction?`<h4>Direção</h4><p>${esc(m.direction)}</p>`:"")
+      +`<h4>Cores</h4>`+Object.entries(t.colors||{}).map(([k,v])=>`<div class="sw"><i style="background:${esc(v)}"></i><span>${esc(k)}</span><code>${esc(v)}</code></div>`).join("")
+      +`<h4>Tipografia</h4>`+Object.entries(t.fonts||{}).map(([k,v])=>`<div class="sw"><span>${esc(k)}</span><code>${esc(v)}</code></div>`).join("")
+      +(t.other?`<h4>Outros</h4>`+Object.entries(t.other).map(([k,v])=>`<div class="sw"><span>${esc(k)}</span><code>${esc(v)}</code></div>`).join(""):"")
+      ||`<p style="color:var(--muted)">Sem tokens ainda.</p>`;
+  } else {
+    c.innerHTML=`<h4>Histórico</h4>`+((m.history||[]).slice().reverse().map(h=>`<div class="hist"><b>v${esc(h.version)} · ${esc(h.date)}</b>${esc(h.summary)}</div>`).join("")||`<p style="color:var(--muted)">Sem versões ainda.</p>`);
+  }
+}
+function focusScreen(id){
+  const pos=layout()[id]; if(!pos) return;
+  const W=viewport.clientWidth-(($("#side").classList.contains("open"))?340:0), H=viewport.clientHeight;
+  S.cam.z=Math.min(1.6,Math.min((W-80)/pos.w,(H-80)/(pos.h+60)));
+  S.cam.x=(W-pos.w*S.cam.z)/2-pos.x*S.cam.z; S.cam.y=(H-(pos.h+50)*S.cam.z)/2-pos.y*S.cam.z;
+  S.sel=id; render();
+}
+
+/* ---------------------------------------------------------------- câmera */
+function applyCam(){ world.style.transform=`translate(${S.cam.x}px,${S.cam.y}px) scale(${S.cam.z})`; }
+function fit(){
+  const pos=Object.values(layout()).filter(p=>p.w); if(!pos.length) return;
+  const minX=Math.min(...pos.map(p=>p.x)), minY=Math.min(...pos.map(p=>p.y))-50;
+  const maxX=Math.max(...pos.map(p=>p.x+p.w)), maxY=Math.max(...pos.map(p=>p.y+p.h+60));
+  const W=viewport.clientWidth, H=viewport.clientHeight;
+  S.cam.z=Math.max(.08,Math.min(1.2,Math.min((W-80)/(maxX-minX),(H-80)/(maxY-minY))));
+  S.cam.x=(W-(maxX-minX)*S.cam.z)/2-minX*S.cam.z; S.cam.y=(H-(maxY-minY)*S.cam.z)/2-minY*S.cam.z; applyCam();
+}
+let drag=null; const touches=new Map();
+viewport.addEventListener("pointerdown",e=>{
+  if(e.target.closest(".frame-head,.pin,button")) return;
+  if(S.mode!=="nav" && e.target.closest(".frame")) return;
+  touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(touches.size===1){ drag={x:e.clientX,y:e.clientY,cx:S.cam.x,cy:S.cam.y}; viewport.classList.add("panning"); viewport.setPointerCapture(e.pointerId); }
+});
+viewport.addEventListener("pointermove",e=>{
+  if(!touches.has(e.pointerId)) return;
+  const prev=touches.get(e.pointerId); touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(touches.size===2){
+    const [a,b]=[...touches.values()]; const pa=e.pointerId===[...touches.keys()][0]?prev:a, pb=e.pointerId===[...touches.keys()][1]?prev:b;
+    const d1=Math.hypot(pa.x-pb.x,pa.y-pb.y)||1, d2=Math.hypot(a.x-b.x,a.y-b.y)||1;
+    zoomAt((a.x+b.x)/2,(a.y+b.y)/2-48,d2/d1); drag=null; return;
+  }
+  if(drag){ S.cam.x=drag.cx+e.clientX-drag.x; S.cam.y=drag.cy+e.clientY-drag.y; applyCam(); }
+});
+const end=e=>{ touches.delete(e.pointerId); if(!touches.size){ drag=null; viewport.classList.remove("panning"); } };
+viewport.addEventListener("pointerup",end); viewport.addEventListener("pointercancel",end);
+viewport.addEventListener("wheel",e=>{
+  e.preventDefault();
+  const mouseWheel = e.deltaMode===1 || (e.deltaX===0 && Math.abs(e.deltaY)>=50);
+  if(e.ctrlKey||e.metaKey||mouseWheel) zoomAt(e.clientX,e.clientY-48,Math.exp(-Math.sign(e.deltaY)*Math.min(Math.abs(e.deltaY),120)*0.0018));
+  else { S.cam.x-=e.deltaX; S.cam.y-=e.deltaY; applyCam(); }   // trackpad: dois dedos movem
+},{passive:false});
+function zoomAt(mx,my,f){ const z=Math.max(.08,Math.min(3,S.cam.z*f)); f=z/S.cam.z; S.cam.x=mx-(mx-S.cam.x)*f; S.cam.y=my-(my-S.cam.y)*f; S.cam.z=z; applyCam(); }
+
+/* ---------------------------------------------------------------- controles */
+function setMode(m){
+  if(m==="edit" && !S.live){ toast("Edição de texto precisa do servidor local — peça ao Claude: “abre o canvas”"); return; }
+  S.mode=m; viewport.className=m==="comment"?"mode-comment":"";
+  document.querySelectorAll("#modes button").forEach(b=>b.classList.toggle("on",b.dataset.mode===m)); render();
+}
+document.querySelectorAll("#modes button").forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
+document.querySelectorAll("#vps button").forEach(b=>b.onclick=()=>{ S.vp=b.dataset.vp; document.querySelectorAll("#vps button").forEach(x=>x.classList.toggle("on",x===b)); render(); fit(); });
+$("#fit").onclick=fit;
+$("#sideBtn").onclick=()=>{ $("#side").classList.toggle("open"); renderSide(); };
+document.querySelectorAll("#side nav button").forEach(b=>b.onclick=()=>{ S.tab=b.dataset.tab; renderSide(); });
+$("#popCancel").onclick=()=>{ $("#pop").style.display="none"; S.pending=null; };
+$("#popSave").onclick=async()=>{
+  const t=$("#popText").value.trim(); if(!t||!S.pending) return;
+  S.fb.comments.push({id:Math.random().toString(36).slice(2,9),...S.pending,vp:S.vp,text:t,date:now(),done:false});
+  if(!S.fb.status[S.pending.screen]||S.fb.status[S.pending.screen]==="aprovado") S.fb.status[S.pending.screen]="mudar";
+  $("#pop").style.display="none"; S.pending=null; await saveFeedback(); render(); openSide("cmts");
+  toast(S.live?"Comentário salvo — o Claude vê na próxima mensagem":"Comentário salvo no navegador — use “Copiar feedback”");
+};
+$("#popText").addEventListener("keydown",e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)) $("#popSave").click(); if(e.key==="Escape") $("#popCancel").click(); });
+$("#copy").onclick=async()=>{
+  const scr=Object.fromEntries((S.manifest.screens||[]).map(s=>[s.id,s.title||s.id]));
+  let md="Feedback do canvas:\n";
+  Object.entries(S.fb.status).forEach(([k,v])=>md+=`- ${scr[k]||k}: ${v}\n`);
+  S.fb.comments.filter(c=>!c.done).forEach((c,i)=>md+=`- [${scr[c.screen]||c.screen} · ${c.vp} · ponto ${Math.round(c.x*100)}%,${Math.round(c.y*100)}%] ${c.text}\n`);
+  try{ await navigator.clipboard.writeText(md); toast("Copiado — cole no chat do Claude"); }catch(e){ prompt("Copie:",md); }
+};
+addEventListener("keydown",e=>{
+  if(e.target.closest("textarea,input")) return;
+  if(e.key==="v") setMode("nav"); if(e.key==="c") setMode("comment"); if(e.key==="e") setMode("edit"); if(e.key==="f") fit();
+});
+
+/* ---------------------------------------------------------------- live reload */
+async function poll(){
+  try{ const r=await fetch("/__version",{cache:"no-store"}); if(r.ok){ const j=await r.json();
+        if(j.version!==S.version){ S.version=j.version; S.fbv=j.feedback; S.manifest=await loadManifest(); await loadFeedback(); render(); renderSide(); toast("Canvas atualizado pelo designer"); }
+        else if(j.feedback!==S.fbv){ S.fbv=j.feedback; const before=JSON.stringify(S.fb); await loadFeedback(); if(JSON.stringify(S.fb)!==before){ render(); renderSide(); } } } }catch(e){}
+  setTimeout(poll,1500);
+}
+
+/* ---------------------------------------------------------------- início */
+(async()=>{
+  S.live = location.protocol.startsWith("http") && await probeServer();
+  const conn=$("#conn"); conn.classList.toggle("live",S.live);
+  conn.querySelector("span").textContent=S.live?"ao vivo":"offline";
+  conn.title=S.live?"Servidor local ativo: atualiza sozinho e salva comentários/edições no projeto":"Aberto como arquivo: comentários ficam neste navegador (use Copiar feedback). Peça ao Claude para abrir o canvas com o servidor.";
+  $("[data-mode=edit]").disabled=!S.live;
+  S.manifest=await loadManifest(); await loadFeedback(); render(); fit();
+  if(S.live) poll();
+})();
+addEventListener("resize",()=>applyCam());
+</script>
+</body>
+</html>

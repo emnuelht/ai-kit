@@ -1,0 +1,28 @@
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Selftest antes de publicar
+        run: python3 kit/.claude/hooks/guard.py --selftest
+      - name: Tag bate com a versão do KIT-UPDATE.md
+        run: |
+          K=$(head -1 kit/.ai/KIT-UPDATE.md | grep -oP 'ai-kit \K[0-9]+\.[0-9]+\.[0-9]+')
+          [ "v$K" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME ≠ KIT-UPDATE.md $K"; exit 1; }
+      - name: Gerar ai-kit.zip (conteúdo de kit/ na raiz do zip)
+        run: cd kit && zip -qr ../ai-kit.zip . -x '*/__pycache__/*'
+      - name: Notas da versão a partir do CHANGELOG
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          awk -v v="$V" '$0 ~ "^## \\["v"\\]" {f=1; next} /^## \[/ {f=0} f' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "Versão $V" > notes.md
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: ai-kit.zip
+          body_path: notes.md

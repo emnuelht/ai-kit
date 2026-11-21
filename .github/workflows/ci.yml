@@ -1,0 +1,31 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Guard selftest
+        run: python kit/.claude/hooks/guard.py --selftest
+      - name: JSON válido
+        run: |
+          python -m json.tool kit/.claude/settings.json > /dev/null
+          python -m json.tool kit/.ai/settings.kit.json > /dev/null
+      - name: Scripts Python compilam
+        run: python -m py_compile kit/.claude/hooks/guard.py extras/canvas-local/serve.py extras/canvas-local/bundle.py
+      - name: Versão do KIT-UPDATE.md bate com o CHANGELOG
+        run: |
+          K=$(head -1 kit/.ai/KIT-UPDATE.md | grep -oP 'ai-kit \K[0-9]+\.[0-9]+\.[0-9]+')
+          C=$(grep -m1 -oP '^## \[\K[0-9]+\.[0-9]+\.[0-9]+' CHANGELOG.md)
+          echo "KIT_VERSION=$K CHANGELOG=$C"; [ "$K" = "$C" ]
+      - name: Frontmatter dos agentes e comandos
+        run: |
+          for f in kit/.claude/commands/*.md kit/.claude/skills/*/SKILL.md; do
+            head -1 "$f" | grep -qx -- '---' || { echo "sem frontmatter: $f"; exit 1; }
+          done
