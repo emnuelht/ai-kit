@@ -2,10 +2,15 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versão: [SemVer](https://semver.org/lang/pt-BR/).
 
+## [1.1.0] - 2026-11-22
+### Alterado
+- **O usuário escolhe o modelo.** O kit não define mais `model: opusplan` e a IA não troca de modelo, não sugere trocar nem pede plan mode. Em tarefa difícil ela escreve um plano curto e espera o "ok".
+- `/kit-update` com nota de migração 1.0.x → 1.1.0.
+
 ## [1.0.0] - 2026-11-21
 ### Adicionado
 - Kickoff com perguntas antes de qualquer código (`.ai/KICKOFF.md`).
-- Sessão única, sem subagentes (`Task`/`Agent` bloqueados) e troca automática de modelo com `opusplan`: Opus em plan mode para projetar, Sonnet para executar.
+- Sessão única, sem subagentes (`Task`/`Agent` bloqueados) .
 - Custo fixo de ~750 tokens por sessão: `CLAUDE.md` curto com as regras (bloco `ai-kit`), 5 comandos (`/setup`, `/commit`, `/handoff`, `/resume`, `/kit-update`) e 2 skills (`git-workflow`, `design-direction`).
 - Guard (hook PreToolUse): bloqueia comandos destrutivos, libera só instalações conhecidas e pede confirmação para origens alternativas e escritas em arquivos de permissão; autoteste com 49+ casos.
 - `/setup`: a IA detecta o sistema e instala o que falta (Python, Git, Node, JDK…).

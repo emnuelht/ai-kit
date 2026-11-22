@@ -9,5 +9,5 @@
 4. Referências visuais? (só se tiver interface)
 
 **Depois:** preencha `.ai/project.md` (curto), resuma em ≤ 6 linhas e peça um "ok" (inclui instalar o que a stack pedir via `/setup`). Próximo passo:
-- Com interface → planeje o design em plan mode e desenhe as telas no canvas (`.ai/DESIGN.md`); `status: DESIGN`.
-- Sem interface → planeje a v1 em plan mode, gere o `TASKS.md` (1 linha por tarefa); `status: BUILD`.
+- Com interface → planeje o design e desenhe as telas no canvas (`.ai/DESIGN.md`); `status: DESIGN`.
+- Sem interface → planeje a v1, gere o `TASKS.md` (1 linha por tarefa); `status: BUILD`.

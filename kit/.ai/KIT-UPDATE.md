@@ -1,8 +1,8 @@
-<!-- ai-kit 1.0.0 -->
+<!-- ai-kit 1.1.0 -->
 # Atualizar (ou instalar) o AI Kit neste projeto
 
 Procedimento do comando `/kit-update`. Funciona com qualquer IA que tenha terminal e git.
-Uso: `/kit-update` (última versão) · `/kit-update 1.0.0` (versão específica) · `/kit-update verificar` (só mostra o que mudou).
+Uso: `/kit-update` (última versão) · `/kit-update 1.1.0` (versão específica) · `/kit-update verificar` (só mostra o que mudou).
 
 **Princípios:** nunca perder nada do usuário · mostrar antes de aplicar · um "ok" para o plano, uma pergunta por conflito · arquivos que controlam permissões só mudam com confirmação.
 
@@ -68,8 +68,9 @@ Aplicar:
 
 ## Donos dos arquivos
 - **user** (nunca tocar): `.ai/project.md`, `.ai/state/**`, `.ai/design/CANVAS.md`, `.ai/design/tokens.md`, `.ai/design/canvas/**`, `.ai/.tools/**`, `.claude/settings.local.json`, `.mcp.json`, `.ai/design/**`
-- **merge**: `.claude/settings.json` (listas allow/ask/deny: tire o que o kit tirou, acrescente o novo, mantenha o do usuário; garanta `model: opusplan` e deny `Task`/`Agent`), `CLAUDE.md` (só o bloco do kit), `.ai/.gitignore` (união de linhas)
+- **merge**: `.claude/settings.json` (listas allow/ask/deny: tire o que o kit tirou, acrescente o novo, mantenha o do usuário; garanta o deny `Task`/`Agent`; o kit não define `model` (se a base tinha `"model": "opusplan"` e o usuário não mudou, remova)), `CLAUDE.md` (só o bloco do kit), `.ai/.gitignore` (união de linhas)
 - **kit**: `.claude/commands/**`, `.claude/skills/{design-direction,git-workflow}/**`, `.claude/hooks/guard.py`, `.ai/KICKOFF.md`, `.ai/SETUP.md`, `.ai/DESIGN.md`, `.ai/KIT-UPDATE.md`, `.ai/settings.kit.json`
 
 ## Notas de migração
+- **1.0.x → 1.1.0:** o kit deixou de definir `model: opusplan`; o usuário escolhe o modelo. Remova a chave `model` de `.claude/settings.json` se for `opusplan`.
 - **Pré-1.0 → 1.0.0:** sessão única. Remova `.claude/agents/` (agente alterado pelo usuário → mostre e pergunte uma vez) e os comandos que não existem mais. Remova, se não modificados: `.ai/profiles/`, `.ai/sessions/`, `.ai/security/README.md`, `.ai/skills-catalog.md`, `.ai/SKILLS.md`, `.ai/README-KIT.md`, `.ai/templates/`, `.ai/extras/`, `.ai/KIT_VERSION`, `.ai/kit-manifest.json`, `.ai/design/README.md`, `.ai/design/canvas-local/` (exceto `manifest.js`, `screens/`, `feedback.json` se o usuário usou). Em `.ai/project.md` remova `mode:`/`budget:`/`autonomy:`.

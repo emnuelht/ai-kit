@@ -2,7 +2,7 @@
 
 **Descompacte na pasta do projeto, abra o Claude Code e mande um "oi".** A IA prepara o computador, faz as perguntas certas, desenha as telas num canvas que você vê e edita, divide o trabalho entre agentes especializados e pede sua autorização antes de cada commit.
 
-> 🇺🇸 *A lightweight drop-in kit for Claude Code: onboarding questions before any code, a single session with automatic model switching (`opusplan`), a visual design canvas, token-saving rules, a safety guard hook, and git/semver workflow. Docs in Portuguese.*
+> 🇺🇸 *A lightweight drop-in kit for Claude Code: onboarding questions before any code, a single session where you choose the model, a visual design canvas, token-saving rules, a safety guard hook, and git/semver workflow. Docs in Portuguese.*
 
 ---
 
@@ -12,7 +12,7 @@
 |---|---|
 | A IA sai codando antes de entender o que você quer | Kickoff curto com perguntas primeiro |
 | Contexto enchendo e tokens indo embora | ~750 tokens fixos, sem subagentes nem plugins pesados, estado em arquivo curto |
-| Modelo caro fazendo tudo | Opus só para projetar (plan mode), Sonnet para executar — troca automática |
+| Modelo caro fazendo tudo | Você decide o modelo (`/model`); a IA não troca por conta própria |
 | Design decidido por texto | Canvas visual (Artefatos › Design do Claude) com todas as telas, antes do código |
 | "Instala isso aí" — e o usuário não sabe | A própria IA instala o que falta (Python, Git, Node, ferramentas de segurança, plugins) |
 | Comandos perigosos passam | Guard bloqueia `rm -rf /`, `push --force`, `curl \| sh`, leitura de `.env`, pentest fora do escopo; pede aprovação para pacote desconhecido |
@@ -40,7 +40,7 @@ O kit não mexe no seu código; ele ocupa poucos arquivos na raiz:
 meu-site/
 ├── index.html, src/, assets/   ← seu projeto
 ├── CLAUDE.md                   ← regras do kit (bloco delimitado) + import do project.md
-├── .claude/                    ← settings (opusplan, permissões), guard, 5 comandos, 2 skills
+├── .claude/                    ← settings (permissões), guard, 5 comandos, 2 skills
 └── .ai/
     ├── project.md              ← o que é o projeto (preenchido no kickoff)
     ├── state/HANDOFF.md        ← onde parou
@@ -57,13 +57,13 @@ Dentro do projeto: **`/kit-update`** (ou `/kit-update verificar` para só ver o 
 ## Como um projeto anda
 
 ```
-perguntas → plano (Opus) → telas no canvas → execução (Sonnet) → /commit → /handoff
+perguntas → plano → telas no canvas → execução → /commit → /handoff
 ```
 
-## Uma sessão, troca automática de modelo
+## Uma sessão, você escolhe o modelo
 
 - **Sem subagentes** (bloqueados nas permissões): todo o trabalho acontece na sessão principal, sem ninguém relendo o projeto do zero.
-- **`opusplan`:** em plan mode o Claude Code usa **Opus** para projetar (arquitetura, telas, bugs difíceis); ao executar, troca sozinho para **Sonnet**. A IA pede o plan mode quando a tarefa merece.
+- **Modelo é decisão sua:** o kit não define nem troca modelo. Use `/model` quando quiser (por exemplo, Opus para projetar, Sonnet para executar). Em tarefas difíceis a IA só escreve um plano curto e espera o seu "ok".
 - **~750 tokens fixos** por sessão e nenhum plugin ligado por padrão.
 
 ## Comandos
@@ -72,7 +72,7 @@ perguntas → plano (Opus) → telas no canvas → execução (Sonnet) → /comm
 
 ## Funciona com
 
-- **Claude Code** — completo (opusplan, comandos, hooks, skills).
+- **Claude Code** — completo (comandos, hooks, skills).
 - **Claude app com Artefatos** — o canvas de design abre nos seus Artefatos.
 
 Testado em Linux e Windows (Git Bash). macOS segue os mesmos caminhos (Homebrew / Xcode CLT).
@@ -82,7 +82,6 @@ Testado em Linux e Windows (Git Bash). macOS segue os mesmos caminhos (Homebrew 
 - O canvas **Design** só existe em sessões com acesso aos Artefatos do Claude; no terminal puro use o canvas local de [`extras/`](extras/).
 - Janelas de permissão do sistema (UAC do Windows, instalador do macOS) e senha de `sudo` no Linux precisam de você.
 - Alguns plugins pedem confirmação de um comando de instalação que só pode ser aceita no seu terminal.
-- A troca automática depende do plan mode: Haiku não entra sozinho na sessão principal.
 
 ## Estrutura do repositório
 

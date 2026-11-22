@@ -5,10 +5,9 @@
 
 **Sem subagentes.** Todo o trabalho acontece nesta sessão. Não delegue.
 
-**Planejar vs executar (troca de modelo):**
-- Difícil → planeje primeiro, em plan mode (no Claude Code com `opusplan` isso usa Opus): arquitetura, modelo de dados, funcionalidade com vários arquivos, bug sem causa clara, decisão difícil de desfazer, design de telas. Se não estiver em plan mode, peça ao usuário: "isso precisa de planejamento — ative o plan mode (Shift+Tab ou /plan)".
-- Óbvio → execute direto (Sonnet): ler, buscar, editar, renomear, ajustar estilo, testes simples, seguir um plano aprovado.
-- Planeje no **começo** da funcionalidade, com o contexto ainda pequeno (trocar de modelo no meio de uma conversa longa reprocessa tudo).
+**Modelo:** quem escolhe é o usuário (`/model`). Nunca troque, sugira trocar nem peça plan mode por conta própria; trabalhe com o modelo da sessão.
+
+**Planejar vs executar:** coisa difícil (arquitetura, modelo de dados, funcionalidade com vários arquivos, bug sem causa clara, decisão difícil de desfazer, design de telas) → antes do código, escreva um plano curto e espere o "ok". Coisa óbvia (ler, buscar, editar, ajustar estilo, seguir plano aprovado) → faça direto.
 
 **Economia:**
 - Busque antes de ler (`grep`/`glob`) e leia só o trecho. Nunca `node_modules`, `dist`, `build`, `target`, lockfiles, binários.
